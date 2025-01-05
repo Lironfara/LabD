@@ -7,7 +7,7 @@ section .data
     numberFormat: db "%d", 10, 0
     stringFormat: db "%s", 10, 0
     x_struct: dw 5
-    x_num:db 0xaa, 1,2, 0x44, 0x4f
+    x_num: dw 0xaa, 1,2, 0x44, 0x4f
 
 section .bss
     input_buffer resb 600
@@ -23,8 +23,6 @@ main:
     push eax ; we need to pass the address of x_struct
     call print_multi
     add esp, 4
-    mov esp, ebp
-    pop ebp
     ret
 
 
@@ -33,7 +31,7 @@ print_multi:
     mov ebp, esp
     push esi ;beause we use it
     push edi ;beause we use it
-    push ebx ;beause we use it
+    push ecx ;beause we use it
 
     mov esi, [ebp + 8]        ; Load the address of x_struct into eax
     movzx ecx, word [esi]     ; Load array length to ecx
@@ -57,10 +55,9 @@ end_print_multi:
     push new_line
     call printf
     add esp, 4
-
-    pop edi
     pop ecx
-    pop eax
-    mov esp, ebp
+    pop edi
+    pop esi
+    mov esp, ebp ;the last used function "fix" the stack
     pop ebp
     ret
