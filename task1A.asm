@@ -36,14 +36,14 @@ print_multi:
     push ebx ;beause we use it
 
     mov esi, [ebp + 8]        ; Load the address of x_struct into eax
-    movzx ecx, byte [eax]     ; Load array length to ecx
-    lea edi, [esi + 1]        ;holds the adress of x_num
+    movzx ecx, word [esi]     ; Load array length to ecx
+    lea edi, [esi + 2]        ;holds the adress of x_num
     dec ecx
 
 loop:
     cmp ecx, -1               ; Check if ecx is 0
     je end_print_multi        ; If ecx is 0, jump to end_print_multi
-    movzx eax, byte [edi + ecx] ; Load the value - start at end of array
+    movzx eax, word [edi + ecx * 2] ; Load the value - start at end of array
     push ecx
     push eax
     push hexa_format
