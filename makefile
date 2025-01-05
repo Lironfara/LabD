@@ -1,19 +1,11 @@
-all: start main1A
+all : task1A
 
-start: start.o
-	ld -m elf_i386 -o start start.o -lc -I/lib/ld-linux.so.2 -g
+task1A : task1A.o
+	gcc -m32 -g -Wall -no-pie -o task1A task1A.o
 
-start.o: start.asm
-	nasm -f elf32 -g -F dwarf start.asm -o start.o
+task1A.o : task1A.s
+	nasm -g -f elf -w+all -o task1A.o task1A.s
 
-main1A: main1A.o task1A.o
-	ld -m elf_i386 -e main -o main1A main1A.o task1A.o -lc -I/lib/ld-linux.so.2 -g
-
-main1A.o: main1A.asm
-	nasm -f elf32 -g -F dwarf main1A.asm -o main1A.o
-
-task1A.o: task1A.asm
-	nasm -f elf32 -g -F dwarf task1A.asm -o task1A.o
-
-clean:
-	rm -f start.o start main1A.o task1A.o main1A
+.PHONY : clean
+clean :
+	rm -f *.o task1A
