@@ -3,7 +3,7 @@ extern print_multi
 ; aa12444f -> 4f 44 12 aa
 
 section .bss
-    x_num resw 600
+    x_num resb 600
     x_struct resw 1
     input_buffer resb 600
     
@@ -21,8 +21,6 @@ section .text
 
 
 main:
-    push ebp
-    mov ebp, esp
     call getmulti
     ret
 
@@ -87,7 +85,7 @@ calculate_length:
 save_to_x_struct:
     shr ecx, 1 ;divide by 2
     mov word [x_struct], cx ;save the length
-    dec ecx
+    mov edx, 0 ;
     jmp save_to_x_num
 
 save_to_x_num:
@@ -173,7 +171,7 @@ combine_digits:
     shl al, 4
     or al, bl
     mov [x_num + ecx], al
-    inc ecx
+    mov edi, [x_num + ecx]
     mov esp, ebp
     pop ebp
     ret
