@@ -3,32 +3,27 @@ extern print_multi
 ; aa12444f -> 4f 44 12 aa
 
 section .bss
-    x_num resb 600
+    x_num resw 600
     x_struct resw 1
+    input_buffer resb 600
     
 section .data
-    hexa_format db "%02hx", 0  ; Format string for printf
+    hexa_format db "%02hhx", 0  ; Format string for printf
     input_prompt db "Enter a hexadecimal number: ", 0
     new_line db 10, 0           ; Newline character
     numberFormat: db "%d", 10, 0
+    charFormat: db "%c", 0
 
+    
 section .text
     global main
     extern printf, fgets, stdin, stdio
 
 
 main:
-    ; Call print_multi to print initial values - task1A
-    lea eax, [x_struct]
-    push eax ; we need to pass the address of x_struct
-    call print_multi
-    add esp, 4
-
-    ; Call getmulti to get user input - task1B
-    lea eax, [x_struct] ;in bsp+8
-    push eax
+    push ebp
+    mov ebp, esp
     call getmulti
-    add esp, 4
     ret
 
 
@@ -38,14 +33,10 @@ print_multi:
     push esi ;beause we use it
     push edi ;beause we use it
     push ecx ;beause we use it
-
-    mov esi, [ebp + 8]        ; Load the address of x_struct into eax
-    movzx ecx, word [esi]     ; Load array length to ecx
-    lea edi, [esi + 2]        ;holds the adress of x_num
-    dec ecx
+    mov edi, x_num
 
 loop:
-    cmp ecx, -1               ; Check if ecx is 0
+    cmp ecx, 0               ; Check if ecx is 0
     je end_print_multi        ; If ecx is 0, jump to end_print_multi
     movzx eax, word [edi + ecx * 2] ; Load the value - start at end of array
     push ecx
@@ -76,41 +67,119 @@ getmulti:
     add esp, 4
 
     ;read user input
-    lea eax, [x_num]
+    lea eax, [input_buffer]
     push dword [stdin]
     push 600
     push eax
     call fgets ;read the input of size maximum 600 into eax
     add esp, 12 
+    mov esi, eax
+    mov ecx, 0
 
-    ;process input
-    mov ecx, 0 ;counter
-    lea edi, [x_num] ;holds the adress of x_num
-    jmp caculate_length
-
-caculate_length: 
-    cmp byte[edi + ecx], 10 ;check if the byte is 10
-    je end_of_loop_input ;before the call, we jumped if it was equal to 10, now we go to end of loop input regardless?
+calculate_length:
+    movzx edi, byte [esi + ecx]
+    cmp edi, 10 ;for new line
+    je save_to_x_struct
     inc ecx
-    jmp caculate_length 
-
-end_of_loop_input:
-    dec ecx ;ecx holds the length of the input
-    call print_input_user
+    jmp calculate_length
 
 
-print_input_user: ;eax holds 2 chars to be printed
-    cmp ecx, -1
-    je end_of_print
-    movzx eax, byte[edi + ecx]
-    push ecx
-    push eax
-    push hexa_format
-    call printf
-    add esp, 8
-    pop ecx ; restore ecx
+save_to_x_struct:
+    shr ecx, 1 ;divide by 2
+    mov word [x_struct], cx ;save the length
     dec ecx
-    jmp print_input_user
+    jmp save_to_x_num
+
+save_to_x_num:
+    cmp ecx, 0
+    je call_print_multi
+    call convert_to_hex
+    dec ecx
+    jmp save_to_x_num
+
+call_print_multi:
+    call print_multi
+
+convert_to_hex:
+    push ebp
+    mov ebp, esp
+    mov al, byte[esi] ; load the lower byte
+    mov bl, byte[esi+1] ; load the higher byte
+
+    ; Convert the first character (AL)
+    ; Check if AL is a number (ASCII 0-9)
+    cmp al, '0'
+    jl not_a_digit
+    cmp al, '9'
+    jg not_a_digit
+    sub al, '0'
+    jmp convert_second
+
+not_a_digit:
+    ; Check if AL is a letter (ASCII A-F or a-f)
+    cmp al, 'A'
+    jl not_alpha
+    cmp al, 'F'
+    jbe is_uppercase
+    cmp al, 'a'
+    jl not_alpha
+    cmp al, 'f'
+    jg not_alpha
+    sub al, 'a' - 10
+    jmp convert_second
+
+is_uppercase:
+    sub al, 'A' - 10
+    jmp convert_second
+
+not_alpha:
+    ; Handle invalid character
+    ; You can add error handling here if needed
+    jmp end_convert
+
+convert_second:
+    ; Convert the second character (BL)
+    ; Check if BL is a number (ASCII 0-9)
+    cmp bl, '0'
+    jl not_a_digit_second
+    cmp bl, '9'
+    jg not_a_digit_second
+    sub bl, '0'
+    jmp combine_digits
+
+not_a_digit_second:
+    ; Check if BL is a letter (ASCII A-F or a-f)
+    cmp bl, 'A'
+    jl not_alpha_second
+    cmp bl, 'F'
+    jbe is_uppercase_second
+    cmp bl, 'a'
+    jl not_alpha_second
+    cmp bl, 'f'
+    jg not_alpha_second
+    sub bl, 'a' - 10
+    jmp combine_digits
+
+is_uppercase_second:
+    sub bl, 'A' - 10
+    jmp combine_digits
+
+not_alpha_second:
+    ; Handle invalid character
+    ; You can add error handling here if needed
+    jmp end_convert
+
+combine_digits:
+    shl al, 4
+    or al, bl
+    mov [x_num + ecx], al
+    inc ecx
+    mov esp, ebp
+    pop ebp
+    ret
+
+end_convert:
+    ret
 
 end_of_print:
     push new_line
