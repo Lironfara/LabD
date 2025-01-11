@@ -32,9 +32,11 @@ print_multi:
     push edi ;beause we use it
     push ecx ;beause we use it
     mov edi, x_num
+    movzx ecx, word [x_struct] ; Load the length of the array
+    dec ecx 
 
 loop:
-    cmp ecx, 0               ; Check if ecx is 0
+    cmp ecx, -1               ; Check if ecx is 0
     je end_print_multi        ; If ecx is 0, jump to end_print_multi
     movzx eax, word [edi + ecx * 2] ; Load the value - start at end of array
     push ecx
@@ -90,20 +92,22 @@ save_to_x_struct:
 
 save_to_x_num:
     cmp ecx, 0
-    je call_print_multi
+    je  call_print_multi
     call convert_to_hex
     dec ecx
     jmp save_to_x_num
 
 call_print_multi:
     call print_multi
+    jmp done
+    
 
 convert_to_hex:
     push ebp
     mov ebp, esp
     mov al, byte[esi] ; load the lower byte
     mov bl, byte[esi+1] ; load the higher byte
-
+    add esi, 2 ; move to the next word
     ; Convert the first character (AL)
     ; Check if AL is a number (ASCII 0-9)
     cmp al, '0'
@@ -170,13 +174,15 @@ not_alpha_second:
 combine_digits:
     shl al, 4
     or al, bl
-    mov [x_num + ecx], al
-    mov edi, [x_num + ecx]
+    mov [x_num + edx], al
+    add edx, 2
     mov esp, ebp
     pop ebp
     ret
 
 end_convert:
+    mov esp, ebp
+    pop ebp
     ret
 
 end_of_print:
@@ -187,3 +193,7 @@ end_of_print:
     pop ebp ;this is the last function that is called, so it pops ebp
     ret
 
+done: 
+    mov esp, ebp ;the last used function "fix" the stack
+    pop ebp ;this is the last function that is called, so it pops ebp
+    ret
