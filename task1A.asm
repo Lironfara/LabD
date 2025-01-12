@@ -3,7 +3,7 @@ extern print_multi
 ; aa12444f -> 4f 44 12 aa
 
 section .bss
-    x_num resb 600
+    x_num resw 600
     x_struct resw 1
     input_buffer resb 600
     
@@ -79,10 +79,20 @@ getmulti:
 calculate_length:
     movzx edi, byte [esi + ecx]
     cmp edi, 10 ;for new line
-    je save_to_x_struct
+    je check_odd_length
     inc ecx
     jmp calculate_length
 
+check_odd_length:
+    test ecx, 1 ;check if the length is odd
+    jz inc_ecx_before_save
+    mov byte [esi + ecx], '0'
+    inc ecx
+    jmp save_to_x_struct
+
+inc_ecx_before_save:
+    inc ecx
+    jmp save_to_x_struct    
 
 save_to_x_struct:
     shr ecx, 1 ;divide by 2
