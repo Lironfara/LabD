@@ -1,10 +1,11 @@
 extern print_multi
+extern malloc
 ; 0xaa, 1,2,0x44,0x4f
 ; aa12444f -> 4f 44 12 aa
 
 section .bss
-    x_num resw 600
-    x_struct resw 1
+    print_num resb 600
+    print_struct resb 1
     input_buffer resb 600
     
 section .data
@@ -13,6 +14,10 @@ section .data
     new_line db 10, 0           ; Newline character
     numberFormat: db "%d", 10, 0
     charFormat: db "%c", 0
+    x_struct: db 5
+    x_num: db 0xaa, 1,2,0x44,0x4f
+    y_struct: db 6
+    y_num: db 0xaa, 1,2,3,0x44,0x4f
 
     
 section .text
@@ -21,7 +26,8 @@ section .text
 
 
 main:
-    call getmulti
+    call reasult_array ; eax holds the reault array
+    call print_multi
     ret
 
 
@@ -31,8 +37,8 @@ print_multi:
     push esi ;beause we use it
     push edi ;beause we use it
     push ecx ;beause we use it
-    mov edi, x_num
-    movzx ecx, word [x_struct] ; Load the length of the array
+    mov edi, print_num
+    movzx ecx, word [print_struct] ; Load the length of the array
     dec ecx 
 
 loop:
@@ -96,7 +102,7 @@ inc_ecx_before_save:
 
 save_to_x_struct:
     shr ecx, 1 ;divide by 2
-    mov word [x_struct], cx ;save the length
+    mov word [print_struct], cx ;save the length
     mov edx, 0 ;
     jmp save_to_x_num
 
@@ -199,6 +205,115 @@ end_of_print:
     push new_line
     call printf
     add esp, 4
+    mov esp, ebp ;the last used function "fix" the stack
+    pop ebp ;this is the last function that is called, so it pops ebp
+    ret
+
+
+
+reasult_array:
+    push ebp
+    mov ebp, esp
+
+    ;get lengths
+    movzx ecx, byte [x_struct]  ; length of first array
+    movzx edx, byte [y_struct]  ; length of second array
+    
+    ; Find min_len
+    cmp ecx, edx
+    jg ecx_bigger
+    xchg ecx, edx ; ecx is the bigger one
+
+
+ecx_bigger:
+    
+    ; Allocate memory for result (maxmin + 1 for size byte)
+    push ecx
+    push edx
+    inc ecx            ; add 1 for size byte
+    mov [print_struct] , cl ; save the length of the result array
+    push ecx
+    call malloc ;malloc(esi)
+    add esp, 4 ;now eax holds the reault array
+    pop edx ;restore edx
+    pop ecx ;restore ecx
+
+    test eax, eax      ; check if malloc succeeded
+    jz malloc_failed
+
+    mov edi, eax ; edi points to the result array
+    call maxmin ; eax points to the longer array
+
+    ;eax - pointer to the longer array
+    ;ebx - pointer to the shorter array
+    mov esi, 0 ;index for the result array
+    add eax, 1 ;skip the size byte
+    add ebx, 1 ;skip the size byte
+    clc ;clear the carry flag
+    
+
+;ecx - max_len
+;edx - min_len
+add_loop:
+    cmp esi, edx ;check if we finished the shorter array
+    je copy_remaining
+
+    ;keep adding
+    mov al, byte [eax + esi] ;al holds eax[esi]
+    mov bl, byte [ebx + esi] ;bl holds ebx[esi]
+    add al, bl ;add the two bytes
+    adc [edi + esi], al ;stroe the reault in the reault array
+    inc esi
+    jmp add_loop
+
+copy_remaining:
+    cmp esi, ecx ;check if we finished the longer array
+    je final_carry
+
+    ;copy the remaining of the longer array
+    mov al, byte [eax + esi]
+    adc al, 0 ;add the carry
+    mov byte [edi + esi], al ;stroe the reault in the reault array
+    inc esi
+    jmp copy_remaining
+
+final_carry:
+    jc carry_exists
+    mov byte [edi + esi], 0 ;if no carry, pad with 0
+    jmp print_reault
+
+carry_exists:
+    mov byte [edi + esi], 1 ;if carry, pad with 1
+    jmp print_reault
+
+
+print_reault:
+    mov [print_num], edi ;save the result array
+    call print_multi
+    ret
+
+
+
+maxmin:
+    push ebp    
+    mov ebp, esp
+    movzx eax, byte [x_struct]
+    movzx ebx, byte [y_struct]
+    cmp eax, ebx
+    jl swap_pointers
+    
+    jmp done ;to fix the stack
+
+swap_pointers: ;eax will point to the longer array
+    mov eax, y_struct
+    mov ebx, x_struct
+    jmp done ;to fix the stack
+
+
+
+    
+
+malloc_failed:
     mov esp, ebp ;the last used function "fix" the stack
     pop ebp ;this is the last function that is called, so it pops ebp
     ret
