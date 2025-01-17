@@ -136,7 +136,6 @@ input_mode:
     ;get the first number from user
     call getmulti ; print_num and print_struct are filled
 
-    call print_multi
 
   ; Save first number for addition
     movzx eax, byte [print_struct]
@@ -157,7 +156,6 @@ get_second_num:
     call getmulti
     
     ; Print second number
-    call print_multi
     
     ; Save second number for addition
     movzx eax, byte [print_struct]
@@ -482,21 +480,23 @@ add_loop:
 
 restore_carry:
     popfd ;restore the flags (carry)
+    pushfd 
     
 copy_remaining:
  
     cmp esi, ecx ;check if we finished the longer array
     je final_carry
 
-    pushfd
+    popfd
     ;copy the remaining of the longer array
     mov al, byte [eax + esi]
-    popfd
     mov byte [edi + esi], al ;stroe the reault in the reault array
+    pushfd
     inc esi
     jmp copy_remaining
 
 final_carry:
+    popfd
     jc carry_exists
     mov byte [edi + esi], 0 ;if no carry, pad with 0
     jmp print_reault
