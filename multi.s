@@ -441,30 +441,31 @@ ecx_bigger:
 
     push eax ;save the pointer longer array
     push ebx ;save the pointer shorter array
-    mov eax, [esp + 4] ;eax - pointer to the longer array
-    mov ebx, [esp] ;ebx - pointer to the shorter array
-
+    pop ebx ;restore the pointer to the shorter array
+    pop eax ;restore the pointer to the longer array
     ;eax - pointer to the longer array
     ;ebx - pointer to the shorter array
     mov esi, 0 ;index for the result array
-    clc ;clear the carry flag
+    clc
 
 ;ecx - max_len
 ;edx - min_len
 add_loop:
+    pushfd ;cmp changes the carry! we must keep it
     cmp esi, edx ;check if we finished the shorter array
-    je calculate_remaining ;if we done, we need to check the carry flag and it if needed
+    je restore_carry ;if we done, we need to check the carry flag and it if needed
+    popfd ;restore the carry flag after comparing
 
     ;keep adding
     push eax ;save the pointer to the longer array
     push ebx ;save the pointer to the shorter array
 
     ;use temporary registers to hold the values
+   
     mov al, byte [eax + esi] ;al holds eax[esi]
     adc al, 0 ;add the carry flag
     mov bl, byte [ebx + esi] ;bl holds ebx[esi]
-    add al, bl ;add the two bytes
-    
+    add al, bl ;add the values
 
     mov [edi + esi], al ;store the result BEFORE popping
     
@@ -474,25 +475,34 @@ add_loop:
     inc esi
     jmp add_loop
 
+restore_carry:
+    popfd ;restore the carry flag
     
 calculate_remaining:
-    push eax ;save the pointer to the longer array
-    push ebx ;save the pointer to the shorter array
-
+    pushfd  
     ;if we reached here, it means that we finished the shorter array
     cmp esi, ecx ;check if we finished the longer array
     je final_carry ;if we done, we need to check the carry flag and it if needed
+
+    popfd ;restore the carry flag after comparing
+
+    push eax ;save the pointer to the longer array
+    push ebx ;save the pointer to the shorter array
+   
     mov al, byte [eax + esi] ;al holds eax[esi]
     adc al, 0 ;add the carry flag
     mov [edi + esi], al ;store the result
 
     pop ebx ;restore the pointer to the shorter array
     pop eax ;restore the pointer to the longer array
+
     inc esi
     jmp calculate_remaining
 
 final_carry:
-    setc al ;set al to 1 if the carry flag is set
+    popfd ;restore the carry flag 
+    mov al, 0
+    adc al, 0 ;add the carry flag
     mov [esi + edi], al ;store the carry flag
     jmp print_reault
 

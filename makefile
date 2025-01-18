@@ -1,10 +1,10 @@
 all : multi
 
 multi : multi.o
-	gcc -m32 -g -Wall -no-pie -o multi multi.o
+	gcc -m32 -o multi multi.o
 
-multi.o : multi.asm
-	nasm -g -f elf -w+all -o multi.o multi.asm
+multi.o : multi.s
+	nasm -f elf32 multi.s -o multi.o
 
 .PHONY : clean
 clean :
