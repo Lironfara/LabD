@@ -1,11 +1,11 @@
-all : task1A
+all : multi
 
-task1A : task1A.o
-	gcc -m32 -g -Wall -no-pie -o task1A task1A.o
+multi : multi.o
+	gcc -m32 -g -Wall -no-pie -o multi multi.o
 
-task1A.o : task1A.asm
-	nasm -g -f elf -w+all -o task1A.o task1A.asm
+multi.o : multi.asm
+	nasm -g -f elf -w+all -o multi.o multi.asm
 
 .PHONY : clean
 clean :
-	rm -f *.o task1A
+	rm -f *.o multi

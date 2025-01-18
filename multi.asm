@@ -178,7 +178,6 @@ do_addition:
 
 
 random_mode:
-
     push 0
     call time
     add esp, 4
@@ -285,18 +284,17 @@ calculate_length:
     jmp calculate_length
 
 check_odd_length:
-    test ecx, 1 ;check if the length is odd
-    jz inc_ecx_before_save
-    mov byte [esi + ecx], '0'
-    inc ecx
-    jmp save_to_reault_struct
+    test ecx, 1      ; check if the length is odd
+    jz save_to_reault_struct  ; if even length, skip zero padding
 
-inc_ecx_before_save:
+    ; If odd length, shift all characters right by one
+    mov dl, byte [esi + ecx - 1 ] ; Save the last character not including the new line
+    mov byte [esi + ecx], dl ; add null terminator
+    mov byte [esi + ecx - 1], '0' ; Add zero padding
     inc ecx
-    jmp save_to_reault_struct    
+
 
 save_to_reault_struct:
-
     shr ecx, 1 ;divide by 2
     mov byte [print_struct], cl ;save the length
 
@@ -428,7 +426,7 @@ ecx_bigger:
     ; Allocate memory for result (maxmin + 1 for size byte)
     push ecx
     push edx
-    inc ecx            ; add 1 for size byte
+    inc ecx ; Add 1 for possible carry
     mov [print_struct] , cl ; save the length of the result array
     push ecx
     call malloc ;malloc(esi)
@@ -438,7 +436,7 @@ ecx_bigger:
 
     test eax, eax      ; check if malloc succeeded
     jz malloc_failed
-    mov edi, eax ; edi points to the result array
+    lea edi, [eax] ; edi points to the result array
     call maxmin ; eax points to the longer array
 
     push eax ;save the pointer longer array
@@ -450,15 +448,12 @@ ecx_bigger:
     ;ebx - pointer to the shorter array
     mov esi, 0 ;index for the result array
     clc ;clear the carry flag
-    
 
 ;ecx - max_len
 ;edx - min_len
 add_loop:
-    pushfd ;save the flags (carry)
     cmp esi, edx ;check if we finished the shorter array
-    je restore_carry
-    popfd ;restore the flags (carry)
+    je calculate_remaining ;if we done, we need to check the carry flag and it if needed
 
     ;keep adding
     push eax ;save the pointer to the longer array
@@ -466,8 +461,10 @@ add_loop:
 
     ;use temporary registers to hold the values
     mov al, byte [eax + esi] ;al holds eax[esi]
+    adc al, 0 ;add the carry flag
     mov bl, byte [ebx + esi] ;bl holds ebx[esi]
-    adc al, bl ;add the two bytes
+    add al, bl ;add the two bytes
+    
 
     mov [edi + esi], al ;store the result BEFORE popping
     
@@ -477,32 +474,26 @@ add_loop:
     inc esi
     jmp add_loop
 
-
-restore_carry:
-    popfd ;restore the flags (carry)
-    pushfd 
     
-copy_remaining:
- 
-    cmp esi, ecx ;check if we finished the longer array
-    je final_carry
+calculate_remaining:
+    push eax ;save the pointer to the longer array
+    push ebx ;save the pointer to the shorter array
 
-    popfd
-    ;copy the remaining of the longer array
-    mov al, byte [eax + esi]
-    mov byte [edi + esi], al ;stroe the reault in the reault array
-    pushfd
+    ;if we reached here, it means that we finished the shorter array
+    cmp esi, ecx ;check if we finished the longer array
+    je final_carry ;if we done, we need to check the carry flag and it if needed
+    mov al, byte [eax + esi] ;al holds eax[esi]
+    adc al, 0 ;add the carry flag
+    mov [edi + esi], al ;store the result
+
+    pop ebx ;restore the pointer to the shorter array
+    pop eax ;restore the pointer to the longer array
     inc esi
-    jmp copy_remaining
+    jmp calculate_remaining
 
 final_carry:
-    popfd
-    jc carry_exists
-    mov byte [edi + esi], 0 ;if no carry, pad with 0
-    jmp print_reault
-
-carry_exists:
-    mov byte [edi + esi], 1 ;if carry, pad with 1
+    setc al ;set al to 1 if the carry flag is set
+    mov [esi + edi], al ;store the carry flag
     jmp print_reault
 
 
@@ -522,6 +513,7 @@ copy_result_loop:
 
 done_copying:
     call print_multi
+    lea edx, [print_num]
     jmp done
     ret
 
@@ -602,12 +594,10 @@ count_ones:
 done_counting:
     ; dl has count of 1's
     test dl, 1          ; Test if count is odd
-    pushfd               ; Save result
     
     ; Shift original state right
     shr ax, 1
     
-    popfd                ; Restore odd/even test result
     jz even_count       ; If even skip setting MSB
     or ah, 0x80        ; Set MSB to 1 if count was odd
 
